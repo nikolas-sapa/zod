@@ -2154,15 +2154,15 @@ function generateLazyCheck(doc: Doc, ctx: CompileContext, schema: SomeType, acce
   const def = schema._zod.def as unknown as { getter: () => SomeType };
   const getterConst = addUserConstant(ctx, def.getter);
   const cacheConst = addConstant(ctx, { parser: null as ((input: unknown) => unknown) | null });
+  const runConst = addConstant(ctx, runtimeRun);
 
   doc.write(`if (!${cacheConst}.parser) {`);
   doc.indented((d) => {
     d.write(`const inner = ${getterConst}();`);
     d.write(`${cacheConst}.parser = function(input) {`);
     d.indented((d2) => {
-      // Use runtime Zod parsing - this correctly handles recursive schemas Pass an empty ctx like runtimeRun does — runtime parsers read ctx.skipChecks/ctx.direction unconditionally and crash on undefined.
-      d2.write(`const result = inner._zod.run({ value: input, issues: [] }, {});`);
-      d2.write(`return result.issues.length === 0 ? result.value : INVALID;`);
+      // runtimeRun supplies the empty ctx the runtime reads unconditionally, and answers INVALID for an async run
+      d2.write(`return ${runConst}(inner, input);`);
     });
     d.write(`};`);
   });

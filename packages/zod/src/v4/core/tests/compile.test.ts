@@ -1408,6 +1408,14 @@ test("lazy schemas with checked or defaulted descendants parse without crashing"
   invalid(tree, { v: 1.5 });
 });
 
+test("an async descendant under lazy throws like the runtime", () => {
+  // the emitted lazy parser answers INVALID for an async run, like runtimeRun, so the fallback throws
+  const schema = z.lazy(() => z.string().refine(async () => true));
+  const aot = compile(schema);
+  expect(() => schema.parse("abc")).toThrow($ZodAsyncError);
+  expect(() => aot.parse("abc")).toThrow($ZodAsyncError);
+});
+
 test("sync refine returning a Promise rejects like the runtime", () => {
   const schema = z.string().refine((() => Promise.resolve(true)) as unknown as (v: string) => boolean);
   const aot = compile(schema);
