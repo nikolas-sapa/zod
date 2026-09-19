@@ -3082,11 +3082,13 @@ export const $ZodTuple: core.$constructor<$ZodTuple> = /*@__PURE__*/ core.$const
           seen = payload.issues.length;
         }
         i++;
+        // capture the index per iteration so the promise callback does not observe `i` after the loop and write every async rest result to the last position (#6612)
+        const index = i;
         const result = def.rest._zod.run({ value: el, issues: [] }, ctx);
         if (result instanceof Promise) {
-          proms.push(result.then((r) => handleTupleResult(r, payload, i)));
+          proms.push(result.then((r) => handleTupleResult(r, payload, index)));
         } else {
-          handleTupleResult(result, payload, i);
+          handleTupleResult(result, payload, index);
         }
       }
     }
