@@ -2154,6 +2154,7 @@ function generateLazyCheck(doc: Doc, ctx: CompileContext, schema: SomeType, acce
   const def = schema._zod.def as unknown as { getter: () => SomeType };
   const getterConst = addUserConstant(ctx, def.getter);
   const cacheConst = addConstant(ctx, { parser: null as ((input: unknown) => unknown) | null });
+  const throwAsyncConst = addConstant(ctx, throwAsync);
 
   doc.write(`if (!${cacheConst}.parser) {`);
   doc.indented((d) => {
@@ -2162,6 +2163,8 @@ function generateLazyCheck(doc: Doc, ctx: CompileContext, schema: SomeType, acce
     d.indented((d2) => {
       // Use runtime Zod parsing - this correctly handles recursive schemas Pass an empty ctx like runtimeRun does — runtime parsers read ctx.skipChecks/ctx.direction unconditionally and crash on undefined.
       d2.write(`const result = inner._zod.run({ value: input, issues: [] }, {});`);
+      // An async inner schema answers with a promise on the sync path; the sentinel must survive (see `throwAsync`) instead of crashing on a missing `issues` property.
+      d2.write(`if (result instanceof Promise) ${throwAsyncConst}();`);
       d2.write(`return result.issues.length === 0 ? result.value : INVALID;`);
     });
     d.write(`};`);

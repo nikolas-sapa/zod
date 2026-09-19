@@ -806,6 +806,17 @@ test("lazy basic", () => {
   invalid(aot, 123);
 });
 
+test("lazy wrapping an async schema raises $ZodAsyncError, not a TypeError (issue #6574)", async () => {
+  const schema = z.lazy(() => z.string().refine(async (s) => s.length > 0));
+  const aot = compile(schema);
+
+  // the sync path must surface the async sentinel the interpreter uses, so callers can fall back to parseAsync
+  expect(() => aot.parse("hello")).toThrow($ZodAsyncError);
+
+  // the async path routes through the runtime and succeeds
+  expect((await aot.safeParseAsync("hello")).success).toBe(true);
+});
+
 test("lazy recursive schemas are refused, and still parse through the runtime", () => {
   interface Node {
     value: string;
